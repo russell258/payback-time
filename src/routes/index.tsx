@@ -393,10 +393,10 @@ function GeneratorPage() {
                 <img src={visualUrl} alt="selected" className="max-h-40 border-2 border-black" />
                 <button
                   type="button"
-                  onClick={() => setVisualUrl("")}
+                  onClick={() => setVisualUrl(defaultVisualUrl)}
                   className="bevel-out bg-[#c0c0c0] px-3 py-1 mt-1 text-xs cursor-pointer"
                 >
-                  🗑️ CLEAR VISUAL
+                  🗑️ RESET TO DEFAULT
                 </button>
               </div>
             )}
