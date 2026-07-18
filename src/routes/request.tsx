@@ -4,6 +4,7 @@ import { z } from "zod";
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { Marquee } from "@/components/Marquee";
+import { playRecordedWithEffects, type RecPreset } from "@/lib/audio-effects";
 
 const searchSchema = z.object({
   id: fallback(z.string(), "").default(""),
