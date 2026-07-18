@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import { Marquee } from "@/components/Marquee";
 import { playRecordedWithEffects, type RecPreset } from "@/lib/audio-effects";
 import { supabase } from "@/integrations/supabase/client";
+import defaultVisualAsset from "@/assets/beg_kitten.gif.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -59,7 +60,8 @@ function GeneratorPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Visual state
-  const [visualUrl, setVisualUrl] = useState<string>("");
+  const defaultVisualUrl = defaultVisualAsset.url;
+  const [visualUrl, setVisualUrl] = useState<string>(defaultVisualUrl);
 
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [generatedQr, setGeneratedQr] = useState<string>("");
@@ -131,7 +133,7 @@ function GeneratorPage() {
       recPitch: audioMode === "record" ? recPitch : undefined,
       recVolume: audioMode === "record" ? recVolume : undefined,
       recPreset: audioMode === "record" ? recPreset : undefined,
-      visualUrl: visualUrl || undefined,
+      visualUrl,
     };
     const { error } = await supabase.from("payloads").insert({ id, data: payload as never });
     setSaving(false);
@@ -391,10 +393,10 @@ function GeneratorPage() {
                 <img src={visualUrl} alt="selected" className="max-h-40 border-2 border-black" />
                 <button
                   type="button"
-                  onClick={() => setVisualUrl("")}
+                  onClick={() => setVisualUrl(defaultVisualUrl)}
                   className="bevel-out bg-[#c0c0c0] px-3 py-1 mt-1 text-xs cursor-pointer"
                 >
-                  🗑️ CLEAR VISUAL
+                  🗑️ RESET TO DEFAULT
                 </button>
               </div>
             )}
