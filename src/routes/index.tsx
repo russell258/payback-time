@@ -206,7 +206,7 @@ function GeneratorPage() {
               type="text"
               value={paymentLink}
               onChange={(e) => setPaymentLink(e.target.value)}
-              placeholder="dbs.com.sg"
+              placeholder="https://www.dbs.com.sg/personal/mobile/paylink/index.html?tranRef=Wj0kQIlFdc"
               className="w-full p-2 bevel-in bg-white text-black font-mono"
             />
           </Field>
