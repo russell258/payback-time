@@ -164,7 +164,7 @@ function GeneratorPage() {
             scrollamount={8}
             className="text-neon-yellow bg-black py-1 text-lg font-bold border-4 border-neon-pink"
           >
-            ★彡 WELCOME TO PAY-UP.NET ~ THE #1 PAYMENT REMINDER ON THE WORLD WIDE WEB ~ EST. 1999 彡★
+            ★彡 WELCOME TO PAYBACK TIME ~ GET YOUR MONEY BACK 彡★
           </Marquee>
           <h1 className="rainbow-text text-5xl md:text-7xl font-black mt-4 text-shadow-neon shake inline-block">
             💰 PAY UP!!! 💰
