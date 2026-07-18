@@ -7,10 +7,10 @@ import { playRecordedWithEffects, type RecPreset } from "@/lib/audio-effects";
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "PAY UP!!! ~ Retro Payment Reminder Generator ~" },
-      { name: "description", content: "Create over-the-top 90s-style payment reminders with talking messages, flashing screens and QR codes." },
-      { property: "og:title", content: "PAY UP!!! Retro Payment Reminder" },
-      { property: "og:description", content: "Generate a GeoCities-style payment demand your friends can't ignore." },
+      { title: "Pay Back Time" },
+      { name: "description", content: "Crimson Cows Red Bull Gives you Wins" },
+      { property: "og:title", content: "Pay Back Time" },
+      { property: "og:description", content: "Crimson Cows Red Bull Gives you Wins" },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
     ],
