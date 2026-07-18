@@ -133,7 +133,7 @@ function GeneratorPage() {
       recPitch: audioMode === "record" ? recPitch : undefined,
       recVolume: audioMode === "record" ? recVolume : undefined,
       recPreset: audioMode === "record" ? recPreset : undefined,
-      visualUrl: visualUrl || undefined,
+      visualUrl,
     };
     const { error } = await supabase.from("payloads").insert({ id, data: payload as never });
     setSaving(false);
