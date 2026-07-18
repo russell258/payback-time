@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
 import { Marquee } from "@/components/Marquee";
 import { playRecordedWithEffects, type RecPreset } from "@/lib/audio-effects";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -17,8 +18,6 @@ export const Route = createFileRoute("/")({
   }),
   component: GeneratorPage,
 });
-
-const GIPHY_KEY = "dc6zaTOxFJmzC";
 
 type AudioMode = "tts" | "record";
 type StoredPayload = {
@@ -61,12 +60,10 @@ function GeneratorPage() {
 
   // Visual state
   const [visualUrl, setVisualUrl] = useState<string>("");
-  const [giphyQuery, setGiphyQuery] = useState("money");
-  const [giphyResults, setGiphyResults] = useState<{ id: string; url: string }[]>([]);
-  const [giphyLoading, setGiphyLoading] = useState(false);
 
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [generatedQr, setGeneratedQr] = useState<string>("");
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!generatedUrl) { setGeneratedQr(""); return; }
@@ -111,29 +108,9 @@ function GeneratorPage() {
     reader.readAsDataURL(file);
   };
 
-  const searchGiphy = async () => {
-    setGiphyLoading(true);
-    try {
-      const res = await fetch(
-        `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(giphyQuery)}&limit=12&rating=pg-13`
-      );
-      const json = await res.json();
-      setGiphyResults((json.data || []).map((g: { id: string; images: { fixed_height: { url: string } } }) => ({
-        id: g.id,
-        url: g.images.fixed_height.url,
-      })));
-    } catch {
-      alert("GIPHY search failed.");
-    } finally {
-      setGiphyLoading(false);
-    }
-  };
-
-  useEffect(() => { void searchGiphy(); // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const handleGenerate = (e: React.FormEvent) => {
+  const handleGenerate = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSaving(true);
     const id = "pay_" + Math.random().toString(36).slice(2, 10);
     const payload: StoredPayload = {
       r: requestor, to: recipient,
@@ -147,14 +124,13 @@ function GeneratorPage() {
       recPreset: audioMode === "record" ? recPreset : undefined,
       visualUrl: visualUrl || undefined,
     };
-    try {
-      localStorage.setItem(id, JSON.stringify(payload));
-    } catch {
-      alert("Payload too large for local storage. Try a smaller image/recording.");
+    const { error } = await supabase.from("payloads").insert({ id, data: payload as never });
+    setSaving(false);
+    if (error) {
+      alert("Failed to save your reminder to the cloud: " + error.message);
       return;
     }
-    const path = `/request?id=${id}`;
-    setGeneratedUrl(`${window.location.origin}${path}`);
+    setGeneratedUrl(`${window.location.origin}/request?id=${id}`);
   };
 
   const openIt = () => {
@@ -252,12 +228,6 @@ function GeneratorPage() {
                     </button>
                   )}
                 </div>
-                {audioDataUrl && (
-                  <div>
-                    <div className="text-xs font-bold mb-1">PREVIEW (raw):</div>
-                    <audio controls src={audioDataUrl} className="w-full" />
-                  </div>
-                )}
 
                 <div>
                   <div className="text-xs font-bold mb-1">🎛️ VOICE PRESET:</div>
@@ -312,28 +282,6 @@ function GeneratorPage() {
               </button>
             </div>
 
-            <div className="border-t-2 border-dashed border-black pt-2">
-              <div className="text-xs font-bold mb-1">🔍 SEARCH GIPHY:</div>
-              <div className="flex gap-2">
-                <input value={giphyQuery} onChange={e => setGiphyQuery(e.target.value)}
-                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void searchGiphy(); } }}
-                  className="flex-1 p-2 bevel-in bg-white font-mono" placeholder="e.g. money, scream" />
-                <button type="button" onClick={() => void searchGiphy()} className="bevel-out bg-neon-cyan font-bold px-3 py-1 cursor-pointer">
-                  GO!
-                </button>
-              </div>
-              {giphyLoading && <div className="text-xs mt-1">Loading...</div>}
-              <div className="grid grid-cols-3 md:grid-cols-4 gap-1 mt-2 max-h-64 overflow-y-auto">
-                {giphyResults.map(g => (
-                  <button type="button" key={g.id} onClick={() => setVisualUrl(g.url)}
-                    className={`cursor-pointer border-4 ${visualUrl === g.url ? "border-neon-pink" : "border-transparent"}`}>
-                    <img src={g.url} alt="" className="w-full h-20 object-cover" />
-                  </button>
-                ))}
-              </div>
-              <div className="text-[10px] text-gray-600 mt-1">Powered by GIPHY</div>
-            </div>
-
             {visualUrl && (
               <div>
                 <div className="text-xs font-bold mb-1">SELECTED:</div>
@@ -345,9 +293,9 @@ function GeneratorPage() {
             )}
           </div>
 
-          <button type="submit"
-            className="w-full bevel-out bg-neon-yellow text-black font-black text-2xl py-3 hover:bg-neon-pink hover:text-white cursor-pointer">
-            ✨ GENERATE LINK!!! ✨
+          <button type="submit" disabled={saving}
+            className="w-full bevel-out bg-neon-yellow text-black font-black text-2xl py-3 hover:bg-neon-pink hover:text-white cursor-pointer disabled:opacity-60">
+            {saving ? "☁️ SAVING TO CLOUD..." : "✨ GENERATE LINK!!! ✨"}
           </button>
         </form>
 
@@ -368,7 +316,7 @@ function GeneratorPage() {
               </div>
             )}
             <div className="text-neon-yellow text-xs">
-              ⚠ Note: media (recordings/images) is saved in this browser only. For cross-device sharing, open the link in the same browser or ask for cloud storage.
+              ☁️ Saved to the cloud — this link works on any device.
             </div>
             <div className="flex flex-wrap gap-2">
               <button onClick={() => navigator.clipboard.writeText(generatedUrl)}

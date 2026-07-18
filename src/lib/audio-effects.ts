@@ -35,25 +35,27 @@ export async function playRecordedWithEffects(
   if (preset === "chipmunk") {
     src.playbackRate.value = Math.min(2, src.playbackRate.value * 1.6);
   } else if (preset === "monstrous") {
-    src.playbackRate.value = Math.max(0.5, src.playbackRate.value * 0.6);
+    src.playbackRate.value = Math.max(0.5, src.playbackRate.value * 0.7);
     const shaper = ctx.createWaveShaper();
-    shaper.curve = makeDistortionCurve(50);
-    shaper.oversample = "4x";
+    shaper.curve = makeDistortionCurve(12);
+    shaper.oversample = "2x";
     const delay = ctx.createDelay();
-    delay.delayTime.value = 0.18;
+    delay.delayTime.value = 0.14;
     const feedback = ctx.createGain();
-    feedback.gain.value = 0.4;
+    feedback.gain.value = 0.2;
+    const wet = ctx.createGain();
+    wet.gain.value = 0.35;
     const lfo = ctx.createOscillator();
     const lfoGain = ctx.createGain();
-    lfo.frequency.value = 6;
-    lfoGain.gain.value = 0.5;
+    lfo.frequency.value = 4;
+    lfoGain.gain.value = 0.2;
     lfo.connect(lfoGain).connect(gain.gain);
     lfo.start();
     node.connect(shaper);
+    shaper.connect(gain);
     shaper.connect(delay);
     delay.connect(feedback).connect(delay);
-    shaper.connect(gain);
-    delay.connect(gain);
+    delay.connect(wet).connect(gain);
     gain.connect(ctx.destination);
     src.start();
     src.onended = () => { try { lfo.stop(); ctx.close(); } catch { /* noop */ } };

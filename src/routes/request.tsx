@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { Marquee } from "@/components/Marquee";
 import { playRecordedWithEffects, type RecPreset } from "@/lib/audio-effects";
+import { supabase } from "@/integrations/supabase/client";
+
 
 const searchSchema = z.object({
   id: fallback(z.string(), "").default(""),
@@ -49,17 +51,26 @@ function RequestPage() {
   const [qr, setQr] = useState<string>("");
 
   useEffect(() => {
-    if (search.id && typeof window !== "undefined") {
-      try {
-        const raw = localStorage.getItem(search.id);
-        if (raw) { setPayload(JSON.parse(raw)); return; }
-      } catch { /* ignore */ }
-    }
-    setPayload({
-      r: search.r, to: search.to, link: search.link, msg: search.msg,
-      audioMode: "tts", tts: search.tts, pitch: search.p, volume: search.v,
-    });
+    let cancelled = false;
+    (async () => {
+      if (search.id) {
+        const { data } = await supabase.from("payloads").select("data").eq("id", search.id).maybeSingle();
+        if (!cancelled && data?.data) { setPayload(data.data as Payload); return; }
+        if (typeof window !== "undefined") {
+          try {
+            const raw = localStorage.getItem(search.id);
+            if (raw) { if (!cancelled) setPayload(JSON.parse(raw)); return; }
+          } catch { /* ignore */ }
+        }
+      }
+      if (!cancelled) setPayload({
+        r: search.r, to: search.to, link: search.link, msg: search.msg,
+        audioMode: "tts", tts: search.tts, pitch: search.p, volume: search.v,
+      });
+    })();
+    return () => { cancelled = true; };
   }, [search]);
+
 
   useEffect(() => {
     if (stage === "reveal" && payload) {
