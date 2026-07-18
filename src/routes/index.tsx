@@ -4,6 +4,7 @@ import QRCode from "qrcode";
 import { Marquee } from "@/components/Marquee";
 import { playRecordedWithEffects, type RecPreset } from "@/lib/audio-effects";
 import { supabase } from "@/integrations/supabase/client";
+import defaultVisualAsset from "@/assets/beg_kitten.gif.asset.json";
 
 export const Route = createFileRoute("/")({
   head: () => ({
