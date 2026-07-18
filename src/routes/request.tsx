@@ -11,7 +11,9 @@ const searchSchema = z.object({
   id: fallback(z.string(), "").default(""),
   r: fallback(z.string(), "Someone").default("Someone"),
   to: fallback(z.string(), "You").default("You"),
-  link: fallback(z.string(), "dbs.com.sg").default("dbs.com.sg"),
+  link: fallback(z.string(), "https://www.dbs.com.sg/personal/mobile/paylink/index.html?tranRef=Wj0kQIlFdc").default(
+    "https://www.dbs.com.sg/personal/mobile/paylink/index.html?tranRef=Wj0kQIlFdc",
+  ),
   msg: fallback(z.string(), "You owe me!").default("You owe me!"),
   tts: fallback(z.string(), "Pay me back!").default("Pay me back!"),
   p: fallback(z.number(), 1).default(1),
