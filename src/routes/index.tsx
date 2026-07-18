@@ -41,7 +41,9 @@ function GeneratorPage() {
   const navigate = useNavigate();
   const [requestor, setRequestor] = useState("Cool Dude");
   const [recipient, setRecipient] = useState("Best Friend");
-  const [paymentLink, setPaymentLink] = useState("");
+  const [paymentLink, setPaymentLink] = useState(
+    "https://www.dbs.com.sg/personal/mobile/paylink/index.html?tranRef=Wj0kQIlFdc"
+  );
   const [message, setMessage] = useState("You owe me for pizza! Pay up!!!");
 
   const [audioMode, setAudioMode] = useState<AudioMode>("tts");
