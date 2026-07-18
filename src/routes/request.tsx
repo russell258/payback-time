@@ -163,11 +163,6 @@ function RequestPage() {
           </div>
         </div>
 
-        {visualUrl && (
-          <div className="bevel-in bg-black p-2 flex justify-center">
-            <img src={visualUrl} alt="" className="max-h-64" />
-          </div>
-        )}
 
         <div className="bevel-out bg-black p-6 text-center space-y-4">
           <div className="text-neon-cyan text-xl font-black blink-slow">
