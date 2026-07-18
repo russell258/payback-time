@@ -97,9 +97,9 @@ function RequestPage() {
   return (
     <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-2xl mx-auto space-y-4">
-        <marquee scrollamount="12" className="bg-hot-red text-neon-yellow font-black text-xl py-2 border-4 border-neon-yellow">
+        <Marquee scrollamount={12} className="bg-hot-red text-neon-yellow font-black text-xl py-2 border-4 border-neon-yellow">
           🚨🚨🚨 URGENT PAYMENT REQUEST FROM {r.toUpperCase()} — DO NOT IGNORE — PAY NOW — 🚨🚨🚨
-        </marquee>
+        </Marquee>
 
         <div className="bevel-out bg-neon-yellow text-black p-4 text-center">
           <div className="text-sm font-bold">📣 A MESSAGE FOR {to.toUpperCase()}:</div>
