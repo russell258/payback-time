@@ -1,10 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import { Marquee } from "@/components/Marquee";
 import { playRecordedWithEffects, type RecPreset } from "@/lib/audio-effects";
+import { supabase } from "@/integrations/supabase/client";
+
 
 const searchSchema = z.object({
   id: fallback(z.string(), "").default(""),
