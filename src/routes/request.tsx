@@ -30,7 +30,6 @@ export const Route = createFileRoute("/request")({
 });
 
 type Stage = "intro" | "flash" | "reveal";
-type RecPreset = "none" | "chipmunk" | "monstrous" | "walkie";
 type Payload = {
   r: string; to: string; link: string; msg: string;
   audioMode: "tts" | "record";
