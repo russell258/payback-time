@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Marquee } from "@/components/Marquee";
 
 export const Route = createFileRoute("/")({
@@ -16,31 +16,123 @@ export const Route = createFileRoute("/")({
   component: GeneratorPage,
 });
 
+// Public GIPHY beta key — safe for client-side demo use.
+const GIPHY_KEY = "dc6zaTOxFJmzC";
+
+type AudioMode = "tts" | "record";
+
+type StoredPayload = {
+  r: string;
+  to: string;
+  link: string;
+  msg: string;
+  audioMode: AudioMode;
+  tts: string;
+  pitch: number;
+  volume: number;
+  audioDataUrl?: string;
+  visualUrl?: string;
+};
+
 function GeneratorPage() {
   const navigate = useNavigate();
   const [requestor, setRequestor] = useState("Cool Dude");
   const [recipient, setRecipient] = useState("Best Friend");
-  const [paymentLink, setPaymentLink] = useState("https://venmo.com/u/example");
+  const [paymentLink, setPaymentLink] = useState("");
   const [message, setMessage] = useState("You owe me for pizza! Pay up!!!");
+
+  const [audioMode, setAudioMode] = useState<AudioMode>("tts");
   const [ttsPhrase, setTtsPhrase] = useState("Hey! You forgot to pay me back!");
   const [pitch, setPitch] = useState(1);
   const [volume, setVolume] = useState(1);
+
+  // Recording state
+  const [recording, setRecording] = useState(false);
+  const [audioDataUrl, setAudioDataUrl] = useState<string>("");
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+
+  // Visual state
+  const [visualUrl, setVisualUrl] = useState<string>("");
+  const [giphyQuery, setGiphyQuery] = useState("money");
+  const [giphyResults, setGiphyResults] = useState<{ id: string; url: string }[]>([]);
+  const [giphyLoading, setGiphyLoading] = useState(false);
+
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      chunksRef.current = [];
+      mr.ondataavailable = e => { if (e.data.size > 0) chunksRef.current.push(e.data); };
+      mr.onstop = async () => {
+        const blob = new Blob(chunksRef.current, { type: mr.mimeType || "audio/webm" });
+        const reader = new FileReader();
+        reader.onloadend = () => setAudioDataUrl(reader.result as string);
+        reader.readAsDataURL(blob);
+        stream.getTracks().forEach(t => t.stop());
+      };
+      mr.start();
+      mediaRecorderRef.current = mr;
+      setRecording(true);
+    } catch (err) {
+      alert("Could not access microphone: " + (err as Error).message);
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    setRecording(false);
+  };
+
+  const handleUpload = (file: File) => {
+    const reader = new FileReader();
+    reader.onloadend = () => setVisualUrl(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const searchGiphy = async () => {
+    setGiphyLoading(true);
+    try {
+      const res = await fetch(
+        `https://api.giphy.com/v1/gifs/search?api_key=${GIPHY_KEY}&q=${encodeURIComponent(giphyQuery)}&limit=12&rating=pg-13`
+      );
+      const json = await res.json();
+      setGiphyResults((json.data || []).map((g: { id: string; images: { fixed_height: { url: string } } }) => ({
+        id: g.id,
+        url: g.images.fixed_height.url,
+      })));
+    } catch {
+      alert("GIPHY search failed.");
+    } finally {
+      setGiphyLoading(false);
+    }
+  };
+
+  useEffect(() => { void searchGiphy(); /* initial */ // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const handleGenerate = (e: React.FormEvent) => {
     e.preventDefault();
-    const params = new URLSearchParams({
-      r: requestor,
-      to: recipient,
-      link: paymentLink,
+    const id = "pay_" + Math.random().toString(36).slice(2, 10);
+    const payload: StoredPayload = {
+      r: requestor, to: recipient,
+      link: paymentLink || "dbs.com.sg",
       msg: message,
-      tts: ttsPhrase,
-      p: String(pitch),
-      v: String(volume),
-    });
-    const path = `/request?${params.toString()}`;
-    const full = `${window.location.origin}${path}`;
-    setGeneratedUrl(full);
+      audioMode,
+      tts: ttsPhrase, pitch, volume,
+      audioDataUrl: audioMode === "record" ? audioDataUrl : undefined,
+      visualUrl: visualUrl || undefined,
+    };
+    try {
+      localStorage.setItem(id, JSON.stringify(payload));
+    } catch {
+      alert("Payload too large for local storage. Try a smaller image/recording.");
+      return;
+    }
+    const path = `/request?id=${id}`;
+    setGeneratedUrl(`${window.location.origin}${path}`);
   };
 
   const openIt = () => {
@@ -67,10 +159,7 @@ function GeneratorPage() {
           </div>
         </div>
 
-        <form
-          onSubmit={handleGenerate}
-          className="bevel-out bg-[#c0c0c0] p-6 space-y-4 text-black"
-        >
+        <form onSubmit={handleGenerate} className="bevel-out bg-[#c0c0c0] p-6 space-y-4 text-black">
           <div className="bg-neon-pink text-black px-2 py-1 font-black text-xl border-2 border-black">
             ★ THE MAGIC FORM ★
           </div>
@@ -81,29 +170,115 @@ function GeneratorPage() {
           <Field label="🎯 VICTIM (Recipient's Name):">
             <input value={recipient} onChange={e => setRecipient(e.target.value)} className="w-full p-2 bevel-in bg-white text-black font-mono" required />
           </Field>
-          <Field label="💸 PAYMENT LINK (Venmo/PayPal/URL):">
-            <input type="url" value={paymentLink} onChange={e => setPaymentLink(e.target.value)} className="w-full p-2 bevel-in bg-white text-black font-mono" required />
+          <Field label="💸 PAYMENT LINK:">
+            <input type="text" value={paymentLink} onChange={e => setPaymentLink(e.target.value)} placeholder="dbs.com.sg" className="w-full p-2 bevel-in bg-white text-black font-mono" />
           </Field>
           <Field label="📢 CUSTOM MESSAGE:">
             <textarea value={message} onChange={e => setMessage(e.target.value)} rows={2} className="w-full p-2 bevel-in bg-white text-black font-mono" required />
           </Field>
-          <Field label="🗣️ TEXT-TO-SPEECH PHRASE:">
-            <textarea value={ttsPhrase} onChange={e => setTtsPhrase(e.target.value)} rows={2} className="w-full p-2 bevel-in bg-white text-black font-mono" required />
-          </Field>
 
-          <div className="grid md:grid-cols-2 gap-4">
-            <Field label={`🎚️ PITCH: ${pitch.toFixed(2)}`}>
-              <input type="range" min={0.5} max={2} step={0.05} value={pitch} onChange={e => setPitch(parseFloat(e.target.value))} className="w-full" />
-            </Field>
-            <Field label={`🔊 VOLUME: ${volume.toFixed(2)}`}>
-              <input type="range" min={0} max={1} step={0.05} value={volume} onChange={e => setVolume(parseFloat(e.target.value))} className="w-full" />
-            </Field>
+          {/* Audio mode tabs */}
+          <div className="bevel-in bg-white p-3 space-y-3">
+            <div className="font-black">🔊 AUDIO METHOD:</div>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setAudioMode("tts")}
+                className={`flex-1 bevel-out font-bold py-2 cursor-pointer ${audioMode === "tts" ? "bg-neon-yellow" : "bg-[#c0c0c0]"}`}>
+                🗣️ TEXT-TO-SPEECH
+              </button>
+              <button type="button" onClick={() => setAudioMode("record")}
+                className={`flex-1 bevel-out font-bold py-2 cursor-pointer ${audioMode === "record" ? "bg-neon-yellow" : "bg-[#c0c0c0]"}`}>
+                🎤 RECORD VOICE
+              </button>
+            </div>
+
+            {audioMode === "tts" ? (
+              <>
+                <Field label="🗣️ TTS PHRASE:">
+                  <textarea value={ttsPhrase} onChange={e => setTtsPhrase(e.target.value)} rows={2} className="w-full p-2 bevel-in bg-white text-black font-mono" />
+                </Field>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Field label={`🎚️ PITCH: ${pitch.toFixed(2)}`}>
+                    <input type="range" min={0.5} max={2} step={0.05} value={pitch} onChange={e => setPitch(parseFloat(e.target.value))} className="w-full" />
+                  </Field>
+                  <Field label={`🔊 VOLUME: ${volume.toFixed(2)}`}>
+                    <input type="range" min={0} max={1} step={0.05} value={volume} onChange={e => setVolume(parseFloat(e.target.value))} className="w-full" />
+                  </Field>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-2">
+                <div className="flex gap-2">
+                  {!recording ? (
+                    <button type="button" onClick={startRecording} className="bevel-out bg-hot-red text-white font-bold px-4 py-2 cursor-pointer">
+                      ● START RECORDING
+                    </button>
+                  ) : (
+                    <button type="button" onClick={stopRecording} className="bevel-out bg-black text-neon-yellow font-bold px-4 py-2 cursor-pointer blink-slow">
+                      ■ STOP
+                    </button>
+                  )}
+                  {audioDataUrl && (
+                    <button type="button" onClick={() => setAudioDataUrl("")} className="bevel-out bg-[#c0c0c0] px-4 py-2 cursor-pointer">
+                      🗑️ CLEAR
+                    </button>
+                  )}
+                </div>
+                {audioDataUrl && (
+                  <div>
+                    <div className="text-xs font-bold mb-1">PREVIEW:</div>
+                    <audio controls src={audioDataUrl} className="w-full" />
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
-          <button
-            type="submit"
-            className="w-full bevel-out bg-neon-yellow text-black font-black text-2xl py-3 hover:bg-neon-pink hover:text-white cursor-pointer"
-          >
+          {/* Visual selection */}
+          <div className="bevel-in bg-white p-3 space-y-3">
+            <div className="font-black">🎬 CHOOSE JUMPSCARE VISUAL:</div>
+
+            <div>
+              <div className="text-xs font-bold mb-1">📁 UPLOAD IMAGE / GIF:</div>
+              <input type="file" accept="image/*,image/gif" onChange={e => {
+                const f = e.target.files?.[0]; if (f) handleUpload(f);
+              }} className="w-full text-sm" />
+            </div>
+
+            <div className="border-t-2 border-dashed border-black pt-2">
+              <div className="text-xs font-bold mb-1">🔍 SEARCH GIPHY:</div>
+              <div className="flex gap-2">
+                <input value={giphyQuery} onChange={e => setGiphyQuery(e.target.value)}
+                  onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); void searchGiphy(); } }}
+                  className="flex-1 p-2 bevel-in bg-white font-mono" placeholder="e.g. money, scream" />
+                <button type="button" onClick={() => void searchGiphy()} className="bevel-out bg-neon-cyan font-bold px-3 py-1 cursor-pointer">
+                  GO!
+                </button>
+              </div>
+              {giphyLoading && <div className="text-xs mt-1">Loading...</div>}
+              <div className="grid grid-cols-3 md:grid-cols-4 gap-1 mt-2 max-h-64 overflow-y-auto">
+                {giphyResults.map(g => (
+                  <button type="button" key={g.id} onClick={() => setVisualUrl(g.url)}
+                    className={`cursor-pointer border-4 ${visualUrl === g.url ? "border-neon-pink" : "border-transparent"}`}>
+                    <img src={g.url} alt="" className="w-full h-20 object-cover" />
+                  </button>
+                ))}
+              </div>
+              <div className="text-[10px] text-gray-600 mt-1">Powered by GIPHY</div>
+            </div>
+
+            {visualUrl && (
+              <div>
+                <div className="text-xs font-bold mb-1">SELECTED:</div>
+                <img src={visualUrl} alt="selected" className="max-h-40 border-2 border-black" />
+                <button type="button" onClick={() => setVisualUrl("")} className="bevel-out bg-[#c0c0c0] px-3 py-1 mt-1 text-xs cursor-pointer">
+                  🗑️ CLEAR VISUAL
+                </button>
+              </div>
+            )}
+          </div>
+
+          <button type="submit"
+            className="w-full bevel-out bg-neon-yellow text-black font-black text-2xl py-3 hover:bg-neon-pink hover:text-white cursor-pointer">
             ✨ GENERATE LINK!!! ✨
           </button>
         </form>
@@ -116,17 +291,16 @@ function GeneratorPage() {
             <div className="bevel-in bg-white text-black p-2 font-mono text-sm break-all">
               {generatedUrl}
             </div>
+            <div className="text-neon-yellow text-xs">
+              ⚠ Note: media (recordings/images) is saved in this browser only. For cross-device sharing, open the link in the same browser or ask for cloud storage.
+            </div>
             <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => navigator.clipboard.writeText(generatedUrl)}
-                className="bevel-out bg-neon-cyan text-black font-bold px-4 py-2 cursor-pointer hover:bg-neon-yellow"
-              >
+              <button onClick={() => navigator.clipboard.writeText(generatedUrl)}
+                className="bevel-out bg-neon-cyan text-black font-bold px-4 py-2 cursor-pointer hover:bg-neon-yellow">
                 📋 COPY LINK
               </button>
-              <button
-                onClick={openIt}
-                className="bevel-out bg-neon-pink text-black font-bold px-4 py-2 cursor-pointer hover:bg-neon-yellow"
-              >
+              <button onClick={openIt}
+                className="bevel-out bg-neon-pink text-black font-bold px-4 py-2 cursor-pointer hover:bg-neon-yellow">
                 👀 PREVIEW IT
               </button>
             </div>

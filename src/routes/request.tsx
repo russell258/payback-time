@@ -6,9 +6,11 @@ import QRCode from "qrcode";
 import { Marquee } from "@/components/Marquee";
 
 const searchSchema = z.object({
+  id: fallback(z.string(), "").default(""),
+  // Legacy fallbacks (backwards compat with old URL-encoded links)
   r: fallback(z.string(), "Someone").default("Someone"),
   to: fallback(z.string(), "You").default("You"),
-  link: fallback(z.string(), "https://example.com").default("https://example.com"),
+  link: fallback(z.string(), "dbs.com.sg").default("dbs.com.sg"),
   msg: fallback(z.string(), "You owe me!").default("You owe me!"),
   tts: fallback(z.string(), "Pay me back!").default("Pay me back!"),
   p: fallback(z.number(), 1).default(1),
@@ -28,35 +30,68 @@ export const Route = createFileRoute("/request")({
 });
 
 type Stage = "intro" | "flash" | "reveal";
+type Payload = {
+  r: string; to: string; link: string; msg: string;
+  audioMode: "tts" | "record";
+  tts: string; pitch: number; volume: number;
+  audioDataUrl?: string;
+  visualUrl?: string;
+};
 
 function RequestPage() {
-  const { r, to, link, msg, tts, p, v } = Route.useSearch();
+  const search = Route.useSearch();
+  const [payload, setPayload] = useState<Payload | null>(null);
   const [stage, setStage] = useState<Stage>("intro");
   const [qr, setQr] = useState<string>("");
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    if (stage === "reveal") {
-      QRCode.toDataURL(link, { width: 240, margin: 2, color: { dark: "#000000", light: "#ffffff" } })
-        .then(setQr)
-        .catch(() => setQr(""));
+    if (search.id && typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem(search.id);
+        if (raw) { setPayload(JSON.parse(raw)); return; }
+      } catch { /* ignore */ }
     }
-  }, [stage, link]);
+    // Fallback to legacy URL params
+    setPayload({
+      r: search.r, to: search.to, link: search.link, msg: search.msg,
+      audioMode: "tts", tts: search.tts, pitch: search.p, volume: search.v,
+    });
+  }, [search]);
+
+  useEffect(() => {
+    if (stage === "reveal" && payload) {
+      QRCode.toDataURL(payload.link, { width: 240, margin: 2, color: { dark: "#000000", light: "#ffffff" } })
+        .then(setQr).catch(() => setQr(""));
+    }
+  }, [stage, payload]);
 
   const handleOpen = () => {
+    if (!payload) return;
     setStage("flash");
-    // Speak
     try {
-      const utter = new SpeechSynthesisUtterance(tts);
-      utter.pitch = Math.min(2, Math.max(0.5, p));
-      utter.volume = Math.min(1, Math.max(0, v));
-      utter.rate = 1;
-      window.speechSynthesis.cancel();
-      window.speechSynthesis.speak(utter);
+      if (payload.audioMode === "record" && payload.audioDataUrl) {
+        const audio = new Audio(payload.audioDataUrl);
+        audio.volume = 1;
+        audioElRef.current = audio;
+        void audio.play();
+      } else {
+        const utter = new SpeechSynthesisUtterance(payload.tts);
+        utter.pitch = Math.min(2, Math.max(0.5, payload.pitch));
+        utter.volume = Math.min(1, Math.max(0, payload.volume));
+        utter.rate = 1;
+        window.speechSynthesis.cancel();
+        window.speechSynthesis.speak(utter);
+      }
     } catch { /* ignore */ }
-    // Move to reveal after flash
-    setTimeout(() => setStage("reveal"), 1600);
+    setTimeout(() => setStage("reveal"), 2400);
   };
+
+  if (!payload) {
+    return <div className="min-h-screen flex items-center justify-center text-neon-yellow">Loading...</div>;
+  }
+
+  const { r, to, link, msg, visualUrl } = payload;
 
   if (stage === "intro") {
     return (
@@ -68,10 +103,8 @@ function RequestPage() {
           <p className="text-neon-cyan text-lg mb-6 blink-slow font-bold">
             YOU HAVE (1) NEW URGENT MESSAGE
           </p>
-          <button
-            onClick={handleOpen}
-            className="bevel-out bg-neon-yellow text-black font-black text-2xl md:text-3xl px-6 py-6 cursor-pointer hover:bg-neon-pink shake w-full"
-          >
+          <button onClick={handleOpen}
+            className="bevel-out bg-neon-yellow text-black font-black text-2xl md:text-3xl px-6 py-6 cursor-pointer hover:bg-neon-pink shake w-full">
             🔔 CLICK TO OPEN YOUR MESSAGE
             <br />
             FROM {r.toUpperCase()} 🔔
@@ -86,10 +119,14 @@ function RequestPage() {
 
   if (stage === "flash") {
     return (
-      <div className="min-h-screen flash-screen flex items-center justify-center">
-        <div className="text-white text-6xl md:text-9xl font-black text-shadow-neon shake text-center">
-          💸 PAY!!! 💸
-        </div>
+      <div className={`fixed inset-0 z-50 ${visualUrl ? "bg-black" : "flash-screen"} flex items-center justify-center overflow-hidden`}>
+        {visualUrl ? (
+          <img src={visualUrl} alt="" className="w-full h-full object-contain shake" />
+        ) : (
+          <div className="text-white text-6xl md:text-9xl font-black text-shadow-neon shake text-center">
+            💸 PAY!!! 💸
+          </div>
+        )}
       </div>
     );
   }
@@ -108,16 +145,18 @@ function RequestPage() {
           </div>
         </div>
 
+        {visualUrl && (
+          <div className="bevel-in bg-black p-2 flex justify-center">
+            <img src={visualUrl} alt="" className="max-h-64" />
+          </div>
+        )}
+
         <div className="bevel-out bg-black p-6 text-center space-y-4">
           <div className="text-neon-cyan text-xl font-black blink-slow">
             💳 PAY {r.toUpperCase()} RIGHT NOW 💳
           </div>
-          <a
-            href={link}
-            target="_blank"
-            rel="noreferrer"
-            className="block bevel-out bg-neon-green text-black font-black text-lg md:text-xl p-3 break-all hover:bg-neon-pink"
-          >
+          <a href={link.startsWith("http") ? link : `https://${link}`} target="_blank" rel="noreferrer"
+            className="block bevel-out bg-neon-green text-black font-black text-lg md:text-xl p-3 break-all hover:bg-neon-pink">
             {link}
           </a>
           {qr && (
@@ -128,13 +167,10 @@ function RequestPage() {
               </div>
             </div>
           )}
-          <canvas ref={canvasRef} className="hidden" />
         </div>
 
-        <button
-          onClick={handleOpen}
-          className="w-full bevel-out bg-neon-pink text-black font-black text-lg py-2 cursor-pointer hover:bg-neon-yellow"
-        >
+        <button onClick={handleOpen}
+          className="w-full bevel-out bg-neon-pink text-black font-black text-lg py-2 cursor-pointer hover:bg-neon-yellow">
           🔁 PLAY MESSAGE AGAIN
         </button>
 
