@@ -359,6 +359,14 @@ function GeneratorPage() {
             <div className="bevel-in bg-white text-black p-2 font-mono text-sm break-all">
               {generatedUrl}
             </div>
+            {generatedQr && (
+              <div className="flex flex-col items-center gap-1">
+                <div className="text-neon-yellow font-bold text-sm">📱 SCAN TO SHARE</div>
+                <div className="bevel-in bg-white p-2 inline-block">
+                  <img src={generatedQr} alt="Generated link QR code" width={220} height={220} />
+                </div>
+              </div>
+            )}
             <div className="text-neon-yellow text-xs">
               ⚠ Note: media (recordings/images) is saved in this browser only. For cross-device sharing, open the link in the same browser or ask for cloud storage.
             </div>
