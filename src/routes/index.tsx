@@ -66,6 +66,18 @@ function GeneratorPage() {
   const [giphyLoading, setGiphyLoading] = useState(false);
 
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
+  const [generatedQr, setGeneratedQr] = useState<string>("");
+
+  useEffect(() => {
+    if (!generatedUrl) { setGeneratedQr(""); return; }
+    QRCode.toDataURL(generatedUrl, { width: 220, margin: 2 })
+      .then(setGeneratedQr).catch(() => setGeneratedQr(""));
+  }, [generatedUrl]);
+
+  const previewRecording = () => {
+    if (!audioDataUrl) return;
+    void playRecordedWithEffects(audioDataUrl, recPitch, recVolume, recPreset);
+  };
 
   const startRecording = async () => {
     try {
