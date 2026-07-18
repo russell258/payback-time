@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import QRCode from "qrcode";
 import { Marquee } from "@/components/Marquee";
+import { playRecordedWithEffects, type RecPreset } from "@/lib/audio-effects";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -19,8 +21,6 @@ export const Route = createFileRoute("/")({
 const GIPHY_KEY = "dc6zaTOxFJmzC";
 
 type AudioMode = "tts" | "record";
-export type RecPreset = "none" | "chipmunk" | "monstrous" | "walkie";
-
 type StoredPayload = {
   r: string;
   to: string;
@@ -66,6 +66,18 @@ function GeneratorPage() {
   const [giphyLoading, setGiphyLoading] = useState(false);
 
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
+  const [generatedQr, setGeneratedQr] = useState<string>("");
+
+  useEffect(() => {
+    if (!generatedUrl) { setGeneratedQr(""); return; }
+    QRCode.toDataURL(generatedUrl, { width: 220, margin: 2 })
+      .then(setGeneratedQr).catch(() => setGeneratedQr(""));
+  }, [generatedUrl]);
+
+  const previewRecording = () => {
+    if (!audioDataUrl) return;
+    void playRecordedWithEffects(audioDataUrl, recPitch, recVolume, recPreset);
+  };
 
   const startRecording = async () => {
     try {
@@ -267,7 +279,13 @@ function GeneratorPage() {
                     <input type="range" min={0} max={1} step={0.05} value={recVolume} onChange={e => setRecVolume(parseFloat(e.target.value))} className="w-full" />
                   </Field>
                 </div>
-                <div className="text-[10px] text-gray-600">Effects apply on playback to the recipient.</div>
+                {audioDataUrl && (
+                  <button type="button" onClick={previewRecording}
+                    className="bevel-out bg-neon-green text-black font-bold px-4 py-2 cursor-pointer hover:bg-neon-yellow">
+                    ▶ PREVIEW WITH EFFECTS
+                  </button>
+                )}
+                <div className="text-[10px] text-gray-600">Effects apply to preview and to what the recipient hears.</div>
               </div>
             )}
           </div>
@@ -341,6 +359,14 @@ function GeneratorPage() {
             <div className="bevel-in bg-white text-black p-2 font-mono text-sm break-all">
               {generatedUrl}
             </div>
+            {generatedQr && (
+              <div className="flex flex-col items-center gap-1">
+                <div className="text-neon-yellow font-bold text-sm">📱 SCAN TO SHARE</div>
+                <div className="bevel-in bg-white p-2 inline-block">
+                  <img src={generatedQr} alt="Generated link QR code" width={220} height={220} />
+                </div>
+              </div>
+            )}
             <div className="text-neon-yellow text-xs">
               ⚠ Note: media (recordings/images) is saved in this browser only. For cross-device sharing, open the link in the same browser or ask for cloud storage.
             </div>
