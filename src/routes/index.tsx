@@ -1,6 +1,8 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
+import QRCode from "qrcode";
 import { Marquee } from "@/components/Marquee";
+import { playRecordedWithEffects, type RecPreset } from "@/lib/audio-effects";
 
 export const Route = createFileRoute("/")({
   head: () => ({
