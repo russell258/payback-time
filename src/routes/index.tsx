@@ -60,7 +60,8 @@ function GeneratorPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Visual state
-  const [visualUrl, setVisualUrl] = useState<string>("");
+  const defaultVisualUrl = defaultVisualAsset.url;
+  const [visualUrl, setVisualUrl] = useState<string>(defaultVisualUrl);
 
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [generatedQr, setGeneratedQr] = useState<string>("");
