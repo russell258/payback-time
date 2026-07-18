@@ -16,10 +16,10 @@ export const Route = createFileRoute("/")({
   component: GeneratorPage,
 });
 
-// Public GIPHY beta key — safe for client-side demo use.
 const GIPHY_KEY = "dc6zaTOxFJmzC";
 
 type AudioMode = "tts" | "record";
+export type RecPreset = "none" | "chipmunk" | "monstrous" | "walkie";
 
 type StoredPayload = {
   r: string;
@@ -31,6 +31,9 @@ type StoredPayload = {
   pitch: number;
   volume: number;
   audioDataUrl?: string;
+  recPitch?: number;
+  recVolume?: number;
+  recPreset?: RecPreset;
   visualUrl?: string;
 };
 
@@ -49,8 +52,12 @@ function GeneratorPage() {
   // Recording state
   const [recording, setRecording] = useState(false);
   const [audioDataUrl, setAudioDataUrl] = useState<string>("");
+  const [recPitch, setRecPitch] = useState(1);
+  const [recVolume, setRecVolume] = useState(1);
+  const [recPreset, setRecPreset] = useState<RecPreset>("none");
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   // Visual state
   const [visualUrl, setVisualUrl] = useState<string>("");
@@ -110,7 +117,7 @@ function GeneratorPage() {
     }
   };
 
-  useEffect(() => { void searchGiphy(); /* initial */ // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { void searchGiphy(); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleGenerate = (e: React.FormEvent) => {
@@ -123,6 +130,9 @@ function GeneratorPage() {
       audioMode,
       tts: ttsPhrase, pitch, volume,
       audioDataUrl: audioMode === "record" ? audioDataUrl : undefined,
+      recPitch: audioMode === "record" ? recPitch : undefined,
+      recVolume: audioMode === "record" ? recVolume : undefined,
+      recPreset: audioMode === "record" ? recPreset : undefined,
       visualUrl: visualUrl || undefined,
     };
     try {
@@ -140,6 +150,13 @@ function GeneratorPage() {
     const url = new URL(generatedUrl);
     navigate({ to: "/request", search: Object.fromEntries(url.searchParams) as never });
   };
+
+  const presets: { id: RecPreset; label: string }[] = [
+    { id: "none", label: "🎙️ NORMAL" },
+    { id: "chipmunk", label: "🐿️ CHIPMUNK" },
+    { id: "monstrous", label: "👹 MONSTROUS" },
+    { id: "walkie", label: "📻 WALKIE-TALKIE" },
+  ];
 
   return (
     <div className="min-h-screen p-4 md:p-8 font-[Comic_Sans_MS]">
@@ -206,14 +223,14 @@ function GeneratorPage() {
                 </div>
               </>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-3">
                 <div className="flex gap-2">
                   {!recording ? (
                     <button type="button" onClick={startRecording} className="bevel-out bg-hot-red text-white font-bold px-4 py-2 cursor-pointer">
                       ● START RECORDING
                     </button>
                   ) : (
-                    <button type="button" onClick={stopRecording} className="bevel-out bg-black text-neon-yellow font-bold px-4 py-2 cursor-pointer blink-slow">
+                    <button type="button" onClick={stopRecording} className="bevel-out bg-black text-neon-yellow font-bold px-4 py-2 cursor-pointer">
                       ■ STOP
                     </button>
                   )}
@@ -225,10 +242,32 @@ function GeneratorPage() {
                 </div>
                 {audioDataUrl && (
                   <div>
-                    <div className="text-xs font-bold mb-1">PREVIEW:</div>
+                    <div className="text-xs font-bold mb-1">PREVIEW (raw):</div>
                     <audio controls src={audioDataUrl} className="w-full" />
                   </div>
                 )}
+
+                <div>
+                  <div className="text-xs font-bold mb-1">🎛️ VOICE PRESET:</div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {presets.map(p => (
+                      <button type="button" key={p.id} onClick={() => setRecPreset(p.id)}
+                        className={`bevel-out font-bold py-2 cursor-pointer text-sm ${recPreset === p.id ? "bg-neon-yellow" : "bg-[#c0c0c0]"}`}>
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Field label={`🎚️ PITCH: ${recPitch.toFixed(2)}`}>
+                    <input type="range" min={0.5} max={2} step={0.05} value={recPitch} onChange={e => setRecPitch(parseFloat(e.target.value))} className="w-full" />
+                  </Field>
+                  <Field label={`🔊 VOLUME: ${recVolume.toFixed(2)}`}>
+                    <input type="range" min={0} max={1} step={0.05} value={recVolume} onChange={e => setRecVolume(parseFloat(e.target.value))} className="w-full" />
+                  </Field>
+                </div>
+                <div className="text-[10px] text-gray-600">Effects apply on playback to the recipient.</div>
               </div>
             )}
           </div>
@@ -239,9 +278,20 @@ function GeneratorPage() {
 
             <div>
               <div className="text-xs font-bold mb-1">📁 UPLOAD IMAGE / GIF:</div>
-              <input type="file" accept="image/*,image/gif" onChange={e => {
-                const f = e.target.files?.[0]; if (f) handleUpload(f);
-              }} className="w-full text-sm" />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*,image/gif"
+                onChange={e => { const f = e.target.files?.[0]; if (f) handleUpload(f); }}
+                className="hidden"
+              />
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="bevel-out bg-neon-cyan text-black font-bold px-4 py-2 cursor-pointer hover:bg-neon-yellow"
+              >
+                📂 CHOOSE FILE...
+              </button>
             </div>
 
             <div className="border-t-2 border-dashed border-black pt-2">
