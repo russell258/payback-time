@@ -20,8 +20,8 @@ export const Route = createFileRoute("/")({
 
 const GIPHY_KEY = "dc6zaTOxFJmzC";
 
-type AudioMode = "tts" | "record";
-export type RecPreset = "none" | "chipmunk" | "monstrous" | "walkie";
+
+
 
 type StoredPayload = {
   r: string;
