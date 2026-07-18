@@ -279,7 +279,13 @@ function GeneratorPage() {
                     <input type="range" min={0} max={1} step={0.05} value={recVolume} onChange={e => setRecVolume(parseFloat(e.target.value))} className="w-full" />
                   </Field>
                 </div>
-                <div className="text-[10px] text-gray-600">Effects apply on playback to the recipient.</div>
+                {audioDataUrl && (
+                  <button type="button" onClick={previewRecording}
+                    className="bevel-out bg-neon-green text-black font-bold px-4 py-2 cursor-pointer hover:bg-neon-yellow">
+                    ▶ PREVIEW WITH EFFECTS
+                  </button>
+                )}
+                <div className="text-[10px] text-gray-600">Effects apply to preview and to what the recipient hears.</div>
               </div>
             )}
           </div>
