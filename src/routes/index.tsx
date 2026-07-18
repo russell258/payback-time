@@ -53,9 +53,9 @@ function GeneratorPage() {
     <div className="min-h-screen p-4 md:p-8 font-[Comic_Sans_MS]">
       <div className="max-w-3xl mx-auto">
         <div className="text-center mb-6">
-          <marquee behavior="alternate" scrollamount="8" className="text-neon-yellow bg-black py-1 text-lg font-bold border-4 border-neon-pink">
+          <Marquee behavior="alternate" scrollamount={8} className="text-neon-yellow bg-black py-1 text-lg font-bold border-4 border-neon-pink">
             ★彡 WELCOME TO PAY-UP.NET ~ THE #1 PAYMENT REMINDER ON THE WORLD WIDE WEB ~ EST. 1999 彡★
-          </marquee>
+          </Marquee>
           <h1 className="rainbow-text text-5xl md:text-7xl font-black mt-4 text-shadow-neon shake inline-block">
             💰 PAY UP!!! 💰
           </h1>

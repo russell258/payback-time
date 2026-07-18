@@ -3,6 +3,7 @@ import { zodValidator, fallback } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { useEffect, useRef, useState } from "react";
 import QRCode from "qrcode";
+import { Marquee } from "@/components/Marquee";
 
 const searchSchema = z.object({
   r: fallback(z.string(), "Someone").default("Someone"),
