@@ -41,7 +41,6 @@ type Payload = {
   visualUrl?: string;
 };
 
-function makeDistortionCurve(amount: number) {
 
 function RequestPage() {
   const search = Route.useSearch();
